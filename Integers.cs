@@ -1,4 +1,6 @@
 
+using System.Collections.Specialized;
+
 namespace CalculatorApp;
 public class Integers {
     private readonly List<int> _number = [];
@@ -78,29 +80,35 @@ public class Integers {
             product.Add(Mod(result,numBase));
         }
         if (memory == 1) negative = true;
-        while (product[^1] == 0 && product.Count>1) {
-            product = product[..^1]; //delete last element == pop xD
-        }
-        return new Integers(product, numBase, negative);
+        return new Integers(PopZeros(product), numBase, negative);
     }
 
-    public static Integers operator *(Integers a, Integers b) { // works
+    public static Integers operator *(Integers a, Integers b) { // works (changed some logic)
         if (a.GetBase != b.GetBase) throw new ArgumentException("Different Bases");
+        var cA = new List<int>(a._number);
+        var cB = new List<int>(b._number); 
+        var countA = a.GetNumberLength;
+        var countB = b.GetNumberLength;
+        for (int i = 0; i < countA; i++) {
+            cA.Add(a._isComplement? a.GetBase - 1: 0);
+        }
+        for (int i = 0; i < countB; i++) {
+            cB.Add(b._isComplement? b.GetBase - 1: 0);
+        }
         var memory = 0;
-        var product = new int[a.GetNumberLength+b.GetNumberLength - 1];
+        var product = new int[cA.Count+cB.Count];
         var negative = a._isComplement != b._isComplement;
-        for (int i = 0; i < b.GetNumberLength; i++) {
-            for (int j = 0; j < a.GetNumberLength; j++) {
-                var result = product[i + j] + a._number.ElementAtOrDefault(j) 
-                             * b._number.ElementAtOrDefault(i) + memory;
+        for (int i = 0; i < cB.Count; i++) {
+            for (int j = 0; j < cA.Count; j++) {
+                var result = product[i + j] + cA.ElementAtOrDefault(j) 
+                             * cB.ElementAtOrDefault(i) + memory;
                 memory = result / a.GetBase;
-                product[i+j] = result % a.GetBase;
+                product[i + j] = result % a.GetBase;
             }
         }
-        while (product[^1]==0 && product.Length>1) {
-            product = product[..^1];
-        }
-        return new Integers(product, a.GetBase, negative);
+
+        product = product[..^(countA+countB+1)];
+        return new Integers(PopZeros(product), a.GetBase, negative);
     }
     public override string ToString() {
         char[] numSymbol = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
@@ -111,8 +119,7 @@ public class Integers {
             str = "-";
         }
         if (GetBase != 10) str += _isComplement ? numSymbol[GetBase - 1] : numSymbol[0];
-        str += PadString(str);
-        // PadList(temp);
+        str += PadString(str); // not ideal but works
         for (int i = temp.Count - 1; i >= 0; i--) {
             if (GetBase == 2 && (i + 1) % 4 == 0 ) str += " "; 
             var curSymbol = temp[i];
@@ -129,7 +136,6 @@ public class Integers {
         for (int i = 0; i < neg.Count; i++) {
             dec += neg[i] * (int)Math.Pow(GetBase, i);
         }
-
         if (_isComplement) dec *= -1;
         return new Integers(dec, toBase); 
     }
@@ -164,6 +170,13 @@ public class Integers {
             str += _isComplement ? numSymbol[GetBase - 1] : numSymbol[0];
         }
         return str;
+    }
+    private static int[] PopZeros(IEnumerable<int> a) {
+        var temp = a.ToArray();
+        while (temp[^1]==0 && temp.Length>1) {
+            temp = temp[..^1];
+        }
+        return temp;
     }
 
     private static int Mod(int a, int b) =>
